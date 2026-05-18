@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario · Jaquea tu duelo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F7F4EF;
+    --ink: #1C1A17;
+    --ink-soft: #4A4640;
+    --ink-muted: #8C8880;
+    --sage: #6B7C6E;
+    --sage-light: #EBF0EB;
+    --gold: #B8924A;
+    --gold-light: #F5ECD8;
+    --rose: #C47B6E;
+    --rose-light: #F7EDEB;
+    --slate: #5A6B7A;
+    --slate-light: #E8EEF2;
+    --border: rgba(28,26,23,0.12);
+    --border-soft: rgba(28,26,23,0.07);
+    --shadow: 0 2px 16px rgba(28,26,23,0.08);
+    --shadow-lg: 0 8px 40px rgba(28,26,23,0.12);
+    --r: 12px;
+    --r-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .header-brand span {
+    color: var(--gold);
+    font-style: italic;
+  }
+  .header-stock {
+    font-size: 12px;
+    color: rgba(247,244,239,0.6);
+    text-align: right;
+  }
+  .header-stock strong {
+    color: var(--cream);
+    font-size: 18px;
+    font-family: 'Cormorant Garamond', serif;
+    display: block;
+    line-height: 1;
+  }
+
+  /* NAV */
+  .nav {
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    padding: 14px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .nav-btn:hover { color: var(--ink); }
+  .nav-btn.active {
+    color: var(--ink);
+    border-bottom-color: var(--gold);
+    font-weight: 500;
+  }
+
+  /* MAIN */
+  .main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+  @media(min-width:480px) {
+    .stats-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  .stat {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .stat.s-stock::before { background: var(--sage); }
+  .stat.s-dinero::before { background: var(--gold); }
+  .stat.s-librerias::before { background: var(--slate); }
+  .stat.s-regalados::before { background: var(--rose); }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .stat-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat-val.money { font-size: 22px; }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+  }
+
+  /* PROGRESS */
+  .progress-wrap {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .progress-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    font-weight: 500;
+    font-style: italic;
+  }
+  .progress-pct {
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .progress-track {
+    background: var(--cream);
+    border-radius: 20px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.5s ease;
+  }
+  .dist-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .dist-row:last-child { margin-bottom: 0; }
+  .dist-label { width: 110px; color: var(--ink-soft); flex-shrink: 0; }
+  .dist-track {
+    flex: 1;
+    background: var(--cream);
+    border-radius: 20px;
+    height: 5px;
+    overflow: hidden;
+  }
+  .dist-fill { height: 100%; border-radius: 20px; }
+  .dist-num { width: 36px; text-align: right; color: var(--ink-muted); font-size: 12px; }
+
+  /* ALERT */
+  .alert {
+    padding: 10px 14px;
+    border-radius: var(--r-sm);
+    font-size: 13px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alert-warn { background: var(--gold-light); color: #7A5E2A; border: 1px solid rgba(184,146,74,0.3); }
+  .alert-ok   { background: var(--sage-light); color: #3A5C3E; border: 1px solid rgba(107,124,110,0.3); }
+  .alert-err  { background: var(--rose-light); color: #8A3D32; border: 1px solid rgba(196,123,110,0.3); }
+
+  /* CARDS */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    font-weight: 500;
+    font-style: italic;
+    margin-bottom: 1rem;
+    color: var(--ink);
+  }
+
+  /* FORM */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .form-grid.full { grid-template-columns: 1fr; }
+  @media(max-width:480px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--gold);
+    background: white;
+  }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+  .btn {
+    padding: 9px 22px;
+    border-radius: var(--r-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid var(--border);
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--cream);
+    border-color: var(--ink);
+  }
+  .btn-primary:hover { background: #2D2A25; }
+  .btn-ghost { background: transparent; color: var(--ink-soft); }
+  .btn-ghost:hover { background: var(--cream); }
+  .btn-danger {
+    background: transparent;
+    color: var(--rose);
+    border-color: rgba(196,123,110,0.4);
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .btn-danger:hover { background: var(--rose-light); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--ink-muted);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border-soft);
+    color: var(--ink);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(247,244,239,0.6); }
+  .total-row td {
+    font-weight: 500;
+    background: var(--cream);
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+  }
+
+  /* BADGES */
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-venta       { background: var(--sage-light);  color: var(--sage); }
+  .badge-regalo      { background: #EEE9F5;             color: #6B4E9B; }
+  .badge-consignacion{ background: var(--slate-light);  color: var(--slate); }
+  .badge-devolucion  { background: var(--gold-light);   color: var(--gold); }
+  .badge-nu          { background: #E5F0EC;              color: #2E7D5A; }
+  .badge-efectivo    { background: #F0EEE8;              color: #6B6456; }
+
+  /* FILTERS */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .filter-bar select,
+  .filter-bar input {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    background: white;
+    color: var(--ink);
+    outline: none;
+    flex: 1;
+    min-width: 120px;
+  }
+  .filter-bar select:focus,
+  .filter-bar input:focus { border-color: var(--gold); }
+
+  /* RECENT */
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .recent-item:last-child { border-bottom: none; }
+  .recent-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .recent-info { flex: 1; }
+  .recent-title { font-size: 13px; color: var(--ink); }
+  .recent-sub { font-size: 11px; color: var(--ink-muted); }
+  .recent-amount { font-family: 'Cormorant Garamond', serif; font-size: 16px; color: var(--ink); text-align: right; }
+
+  /* CONSIG */
+  .consig-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .consig-item:last-child { border-bottom: none; }
+  .consig-name { font-weight: 500; font-size: 14px; }
+  .consig-detail { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+  .consig-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--slate);
+    text-align: right;
+  }
+  .consig-num-label { font-size: 10px; color: var(--ink-muted); text-align: right; }
+
+  .empty {
+    text-align: center;
+    padding: 2.5rem;
+    color: var(--ink-muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 16px;
+  }
+
+  /* SPINNER */
+  .spinner {
+    text-align: center;
+    padding: 2rem;
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+
+  /* CONFIG */
+  .config-section { margin-bottom: 1.5rem; }
+  .config-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+  }
+  .config-box {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1rem 1.25rem;
+  }
+  .config-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 13px;
+  }
+  .config-row:last-child { border-bottom: none; }
+  .config-key { font-family: 'DM Sans', monospace; font-size: 11px; background: var(--cream); padding: 2px 8px; border-radius: 4px; color: var(--ink-soft); word-break: break-all; }
+
+  .section-note {
+    font-size: 13px;
+    color: var(--ink-muted);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand"><span>Jaquea tu duelo</span> · Inventario</div>
+  <div class="header-stock">
+    <strong id="hdr-stock">—</strong>
+    libros disponibles
+  </div>
+</header>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showTab('resumen')">Resumen</button>
+  <button class="nav-btn" onclick="showTab('registrar')">Registrar</button>
+  <button class="nav-btn" onclick="showTab('historial')">Historial</button>
+  <button class="nav-btn" onclick="showTab('consignaciones')">Librerías</button>
+  <button class="nav-btn" onclick="showTab('config')">Configuración</button>
+</nav>
+
+<main class="main">
+
+  <!-- RESUMEN -->
+  <div id="tab-resumen" class="section active">
+    <div id="alert-stock"></div>
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat s-stock"><div class="stat-label">Disponibles</div><div class="stat-val">—</div></div>
+      <div class="stat s-dinero"><div class="stat-label">Ingresos</div><div class="stat-val money">—</div></div>
+      <div class="stat s-librerias"><div class="stat-label">En librerías</div><div class="stat-val">—</div></div>
+      <div class="stat s-regalados"><div class="stat-label">Regalados</div><div class="stat-val">—</div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-header">
+        <div class="progress-title">Distribución de los 1.000 libros</div>
+        <div class="progress-pct" id="pct-disponible">—</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="main-progress" style="background:var(--sage);width:0%"></div>
+      </div>
+      <div id="dist-rows"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Últimos movimientos</div>
+      <div id="recent-list"><div class="spinner">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div id="tab-registrar" class="section">
+    <div class="card">
+      <div class="card-title">Nuevo movimiento</div>
+      <div id="form-alert"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="f-tipo" onchange="onTipoChange()">
+            <option value="venta">Venta</option>
+            <option value="regalo">Regalo / Donación</option>
+            <option value="consignacion">Consignación a librería</option>
+            <option value="devolucion">Devolución de librería</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="f-fecha">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" id="f-cantidad" min="1" value="1">
+        </div>
+        <div class="form-group" id="col-precio">
+          <label>Precio por libro (COP)</label>
+          <input type="number" id="f-precio" placeholder="0">
+        </div>
+      </div>
+      <div class="form-grid" id="row-metodo-comprador">
+        <div class="form-group">
+          <label>Método de pago</label>
+          <select id="f-metodo">
+            <option value="nu">Nu / Nequi / Transferencia</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nombre del comprador</label>
+          <input type="text" id="f-comprador" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="form-grid full" id="row-libreria" style="display:none">
+        <div class="form-group">
+          <label>Nombre de la librería</label>
+          <input type="text" id="f-libreria" placeholder="Ej: Librería Nacional Bogotá">
+        </div>
+      </div>
+      <div class="form-grid full" id="row-destinatario" style="display:none">
+        <div class="form-group">
+          <label>Destinatario o motivo</label>
+          <input type="text" id="f-destinatario" placeholder="Ej: periodista, feria del libro, colega">
+        </div>
+      </div>
+      <div class="form-grid full">
+        <div class="form-group">
+          <label>Nota (opcional)</label>
+          <textarea id="f-nota" placeholder="Cualquier detalle adicional..."></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="resetForm()">Limpiar</button>
+        <button class="btn btn-primary" id="btn-guardar" onclick="guardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="tab-historial" class="section">
+    <div class="filter-bar">
+      <select id="h-tipo" onchange="renderHistorial()">
+        <option value="">Todos los tipos</option>
+        <option value="venta">Ventas</option>
+        <option value="regalo">Regalos</option>
+        <option value="consignacion">Consignaciones</option>
+        <option value="devolucion">Devoluciones</option>
+      </select>
+      <input type="month" id="h-mes" onchange="renderHistorial()">
+      <button class="btn btn-ghost" onclick="exportCSV()" style="flex:none">Exportar CSV</button>
+    </div>
+    <div class="card">
+      <div id="historial-body"><div class="spinner">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- CONSIGNACIONES -->
+  <div id="tab-consignaciones" class="section">
+    <div class="card">
+      <div class="card-title">Libros en librerías</div>
+      <div id="consig-body"><div class="spinner">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div id="tab-config" class="section">
+    <p class="section-note">Para conectar la app a Firebase (base de datos compartida en la nube), ingresa los datos de tu proyecto. Solo necesitas hacerlo una vez.</p>
+
+    <div class="config-section">
+      <div class="config-label">Conexión a Firebase</div>
+      <div class="card">
+        <div id="firebase-status-box"></div>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+          </div>
+        </div>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label>Auth Domain</label>
+            <input type="text" id="cfg-authDomain" placeholder="tu-proyecto.firebaseapp.com">
+          </div>
+        </div>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label>Database URL</label>
+            <input type="text" id="cfg-databaseURL" placeholder="https://tu-proyecto-default-rtdb.firebaseio.com">
+          </div>
+        </div>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label>Project ID</label>
+            <input type="text" id="cfg-projectId" placeholder="tu-proyecto">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="borrarConfig()">Borrar configuración</button>
+          <button class="btn btn-primary" onclick="guardarConfig()">Guardar y conectar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-label">Ajustes del libro</div>
+      <div class="card">
+        <div class="config-row">
+          <span>Stock inicial</span>
+          <span><strong>1.000 libros</strong></span>
+        </div>
+        <div class="config-row">
+          <span>Precio base sugerido</span>
+          <div class="form-group" style="width:160px;margin:0">
+            <input type="number" id="cfg-precio" placeholder="45000" style="margin:0">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="guardarPrecio()">Guardar precio</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-label">Instrucciones rápidas</div>
+      <div class="card">
+        <p style="font-size:13px;color:var(--ink-soft);line-height:1.8">
+          <strong>1.</strong> Ve a <a href="https://console.firebase.google.com" target="_blank" style="color:var(--gold)">console.firebase.google.com</a><br>
+          <strong>2.</strong> Crea un proyecto nuevo → habilita <em>Realtime Database</em> → modo de prueba<br>
+          <strong>3.</strong> En Configuración del proyecto → Web → copia los valores y pégalos arriba<br>
+          <strong>4.</strong> Comparte el enlace de la app con Camila o tu asistente — todas verán los mismos datos
+        </p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────
+const STOCK_INICIAL = 1000;
+
+// ─── STATE ───────────────────────────────────────────────────
+let db = null;
+let movimientos = [];
+let precioBase = 45000;
+let connected = false;
+
+// ─── INIT ────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const precio = localStorage.getItem('jqd_precio');
+  if (precio) precioBase = parseInt(precio);
+
+  const cfg = getFirebaseConfig();
+  if (cfg) {
+    initFirebase(cfg);
+  } else {
+    showModeLocal();
+  }
+
+  setToday();
+  onTipoChange();
+  document.getElementById('f-precio').value = precioBase;
+  renderConfig();
+});
+
+// ─── FIREBASE ─────────────────────────────────────────────────
+function getFirebaseConfig() {
+  const raw = localStorage.getItem('jqd_firebase_cfg');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+function initFirebase(cfg) {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+    db = firebase.database();
+    connected = true;
+    db.ref('movimientos').on('value', snap => {
+      const val = snap.val() || {};
+      movimientos = Object.values(val).sort((a,b) => a.ts - b.ts);
+      renderAll();
+    });
+    updateFirebaseStatus(true);
+  } catch(e) {
+    connected = false;
+    updateFirebaseStatus(false, e.message);
+    showModeLocal();
+  }
+}
+
+function updateFirebaseStatus(ok, err) {
+  const el = document.getElementById('firebase-status-box');
+  if (!el) return;
+  el.innerHTML = ok
+    ? '<div class="alert alert-ok" style="margin-bottom:1rem">✓ Conectado a Firebase. Los datos se sincronizan en tiempo real.</div>'
+    : `<div class="alert alert-err" style="margin-bottom:1rem">✗ Sin conexión Firebase${err ? ': ' + err : ''}. Revisa la configuración.</div>`;
+}
+
+function showModeLocal() {
+  movimientos = getLocalMovimientos();
+  renderAll();
+}
+
+function getLocalMovimientos() {
+  try { return JSON.parse(localStorage.getItem('jqd_movs_local') || '[]'); } catch(e) { return []; }
+}
+
+function saveLocalMovimiento(m) {
+  const arr = getLocalMovimientos();
+  arr.push(m);
+  localStorage.setItem('jqd_movs_local', JSON.stringify(arr));
+}
+
+function deleteLocalMovimiento(id) {
+  const arr = getLocalMovimientos().filter(m => m.id !== id);
+  localStorage.setItem('jqd_movs_local', JSON.stringify(arr));
+}
+
+// ─── TABS ─────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const tabs = ['resumen','registrar','historial','consignaciones','config'];
+  const btns = document.querySelectorAll('.nav-btn');
+  btns[tabs.indexOf(id)]?.classList.add('active');
+  if (id === 'historial') renderHistorial();
+  if (id === 'consignaciones') renderConsignaciones();
+  if (id === 'resumen') renderResumen();
+  if (id === 'config') renderConfig();
+}
+
+// ─── STATS CALC ───────────────────────────────────────────────
+function calcStats() {
+  let vendidos=0, regalados=0, consignados=0, devueltos=0, ingresos=0;
+  movimientos.forEach(m => {
+    if (m.tipo === 'venta')        { vendidos += m.cantidad; ingresos += (m.total || 0); }
+    if (m.tipo === 'regalo')        regalados += m.cantidad;
+    if (m.tipo === 'consignacion')  consignados += m.cantidad;
+    if (m.tipo === 'devolucion')    devueltos += m.cantidad;
+  });
+  const enLibrerias = Math.max(0, consignados - devueltos);
+  const salidos = vendidos + regalados + enLibrerias;
+  return { vendidos, regalados, consignados, devueltos, enLibrerias, ingresos,
+    stock: Math.max(0, STOCK_INICIAL - salidos) };
+}
+
+function fmt(n) {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+}
+
+function fmtCompact(n) {
+  if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return '$' + Math.round(n/1000) + 'K';
+  return fmt(n);
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────
+function renderAll() {
+  renderResumen();
+  renderHistorial();
+  renderConsignaciones();
+}
+
+function renderResumen() {
+  const s = calcStats();
+  const pct = Math.round((s.stock / STOCK_INICIAL) * 100);
+
+  document.getElementById('hdr-stock').textContent = s.stock.toLocaleString('es-CO');
+
+  const alertEl = document.getElementById('alert-stock');
+  alertEl.innerHTML = s.stock < 100
+    ? `<div class="alert alert-warn">⚠ Stock bajo: quedan solo ${s.stock} libros disponibles.</div>`
+    : '';
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat s-stock">
+      <div class="stat-label">Disponibles</div>
+      <div class="stat-val">${s.stock.toLocaleString('es-CO')}</div>
+      <div class="stat-sub">${pct}% del total</div>
+    </div>
+    <div class="stat s-dinero">
+      <div class="stat-label">Ingresos</div>
+      <div class="stat-val money">${fmtCompact(s.ingresos)}</div>
+      <div class="stat-sub">${s.vendidos} libros vendidos</div>
+    </div>
+    <div class="stat s-librerias">
+      <div class="stat-label">En librerías</div>
+      <div class="stat-val">${s.enLibrerias}</div>
+      <div class="stat-sub">en consignación</div>
+    </div>
+    <div class="stat s-regalados">
+      <div class="stat-label">Regalados</div>
+      <div class="stat-val">${s.regalados}</div>
+      <div class="stat-sub">donaciones y regalos</div>
+    </div>
+  `;
+
+  document.getElementById('main-progress').style.width = pct + '%';
+  document.getElementById('pct-disponible').textContent = pct + '% disponible';
+
+  const total = STOCK_INICIAL;
+  document.getElementById('dist-rows').innerHTML = `
+    ${distRow('Vendidos',    s.vendidos,    total, '#6B7C6E')}
+    ${distRow('Regalados',   s.regalados,   total, '#9B8AC4')}
+    ${distRow('En librerías',s.enLibrerias, total, '#5A6B7A')}
+    ${distRow('Disponibles', s.stock,       total, '#B8924A')}
+  `;
+
+  const recientes = movimientos.slice(-6).reverse();
+  const listEl = document.getElementById('recent-list');
+  if (!recientes.length) {
+    listEl.innerHTML = '<div class="empty">Sin movimientos registrados aún.</div>';
+    return;
+  }
+  const colors = {venta:'#6B7C6E',regalo:'#9B8AC4',consignacion:'#5A6B7A',devolucion:'#B8924A'};
+  listEl.innerHTML = recientes.map(m => `
+    <div class="recent-item">
+      <div class="recent-dot" style="background:${colors[m.tipo]||'#ccc'}"></div>
+      <div class="recent-info">
+        <div class="recent-title">${labelTipo(m.tipo)} ${m.detalle ? '· ' + m.detalle : ''}</div>
+        <div class="recent-sub">${m.fecha} · ${m.cantidad} libro${m.cantidad!==1?'s':''}</div>
+      </div>
+      <div class="recent-amount">${m.total > 0 ? fmt(m.total) : '—'}</div>
+    </div>
+  `).join('');
+}
+
+function distRow(label, val, total, color) {
+  const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+  return `<div class="dist-row">
+    <div class="dist-label">${label}</div>
+    <div class="dist-track"><div class="dist-fill" style="background:${color};width:${pct}%"></div></div>
+    <div class="dist-num">${val}</div>
+  </div>`;
+}
+
+function labelTipo(tipo) {
+  return {venta:'Venta',regalo:'Regalo',consignacion:'Consignación',devolucion:'Devolución'}[tipo] || tipo;
+}
+
+// ─── FORM ─────────────────────────────────────────────────────
+function onTipoChange() {
+  const t = document.getElementById('f-tipo').value;
+  document.getElementById('row-metodo-comprador').style.display = t === 'venta' ? 'grid' : 'none';
+  document.getElementById('row-libreria').style.display = (t === 'consignacion' || t === 'devolucion') ? 'grid' : 'none';
+  document.getElementById('row-destinatario').style.display = t === 'regalo' ? 'grid' : 'none';
+  document.getElementById('col-precio').style.display = t === 'venta' ? 'block' : 'none';
+}
+
+function setToday() {
+  document.getElementById('f-fecha').value = new Date().toISOString().split('T')[0];
+}
+
+function resetForm() {
+  setToday();
+  document.getElementById('f-tipo').value = 'venta';
+  document.getElementById('f-cantidad').value = 1;
+  document.getElementById('f-precio').value = precioBase;
+  document.getElementById('f-metodo').value = 'nu';
+  ['f-comprador','f-libreria','f-destinatario','f-nota'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('form-alert').innerHTML = '';
+  onTipoChange();
+}
+
+function setAlert(el, msg, tipo) {
+  el.innerHTML = msg ? `<div class="alert alert-${tipo}" style="margin-bottom:1rem">${msg}</div>` : '';
+}
+
+async function guardar() {
+  const alertEl = document.getElementById('form-alert');
+  const tipo     = document.getElementById('f-tipo').value;
+  const fecha    = document.getElementById('f-fecha').value;
+  const cantidad = parseInt(document.getElementById('f-cantidad').value) || 0;
+  const precio   = parseFloat(document.getElementById('f-precio').value) || 0;
+  const metodo   = document.getElementById('f-metodo').value;
+  const comprador    = (document.getElementById('f-comprador')?.value || '').trim();
+  const libreria     = (document.getElementById('f-libreria')?.value || '').trim();
+  const destinatario = (document.getElementById('f-destinatario')?.value || '').trim();
+  const nota     = (document.getElementById('f-nota')?.value || '').trim();
+
+  if (!fecha)     { setAlert(alertEl, 'Selecciona una fecha.', 'warn'); return; }
+  if (cantidad < 1){ setAlert(alertEl, 'La cantidad debe ser al menos 1.', 'warn'); return; }
+
+  if (tipo !== 'devolucion') {
+    const s = calcStats();
+    if (cantidad > s.stock) {
+      setAlert(alertEl, `Stock insuficiente. Solo hay ${s.stock} libros disponibles.`, 'err');
+      return;
+    }
+  }
+
+  let detalle = '';
+  if (tipo === 'venta')       detalle = comprador;
+  if (tipo === 'regalo')      detalle = destinatario;
+  if (tipo === 'consignacion' || tipo === 'devolucion') detalle = libreria;
+
+  const mov = {
+    id: Date.now().toString(),
+    ts: Date.now(),
+    tipo, fecha, cantidad,
+    precio: tipo === 'venta' ? precio : 0,
+    total:  tipo === 'venta' ? cantidad * precio : 0,
+    metodo: tipo === 'venta' ? metodo : '',
+    detalle, nota,
+    libreria: (tipo === 'consignacion' || tipo === 'devolucion') ? libreria : ''
+  };
+
+  const btn = document.getElementById('btn-guardar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    if (connected && db) {
+      await db.ref('movimientos/' + mov.id).set(mov);
+    } else {
+      saveLocalMovimiento(mov);
+      movimientos = getLocalMovimientos();
+      renderAll();
+    }
+    setAlert(alertEl, '✓ Movimiento guardado correctamente.', 'ok');
+    setTimeout(() => { resetForm(); showTab('resumen'); }, 1200);
+  } catch(e) {
+    setAlert(alertEl, 'Error al guardar: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar';
+  }
+}
+
+// ─── HISTORIAL ────────────────────────────────────────────────
+function renderHistorial() {
+  const fTipo = document.getElementById('h-tipo')?.value || '';
+  const fMes  = document.getElementById('h-mes')?.value  || '';
+
+  let movs = [...movimientos].reverse();
+  if (fTipo) movs = movs.filter(m => m.tipo === fTipo);
+  if (fMes)  movs = movs.filter(m => m.fecha.startsWith(fMes));
+
+  const totalDin = movs.filter(m => m.tipo === 'venta').reduce((a,m) => a + (m.total||0), 0);
+  const totalLib = movs.reduce((a,m) => a + (m.tipo === 'devolucion' ? -m.cantidad : m.cantidad), 0);
+
+  const el = document.getElementById('historial-body');
+  if (!movs.length) { el.innerHTML = '<div class="empty">Sin resultados para este filtro.</div>'; return; }
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Fecha</th><th>Tipo</th><th>Cant.</th><th>Precio u.</th><th>Total</th><th>Detalle</th><th>Nota</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${movs.map(m => `<tr>
+      <td>${m.fecha}</td>
+      <td>${badgeHTML(m.tipo, m.metodo)}</td>
+      <td>${m.tipo==='devolucion'?'+':'-'}${m.cantidad}</td>
+      <td>${m.precio > 0 ? fmt(m.precio) : '—'}</td>
+      <td>${m.total > 0 ? fmt(m.total) : '—'}</td>
+      <td style="color:var(--ink-muted);max-width:140px">${m.detalle||'—'}</td>
+      <td style="color:var(--ink-muted);font-size:12px;max-width:120px">${m.nota||''}</td>
+      <td><button class="btn btn-danger" onclick="eliminar('${m.id}')">Borrar</button></td>
+    </tr>`).join('')}
+    <tr class="total-row">
+      <td colspan="2">Totales</td>
+      <td>${totalLib} libros</td>
+      <td></td>
+      <td>${fmt(totalDin)}</td>
+      <td colspan="3"></td>
+    </tr>
+    </tbody>
+  </table></div>`;
+}
+
+function badgeHTML(tipo, metodo) {
+  const labels = {venta:'Venta',regalo:'Regalo',consignacion:'Consignación',devolucion:'Devolución'};
+  let h = `<span class="badge badge-${tipo}">${labels[tipo]||tipo}</span>`;
+  if (tipo === 'venta' && metodo) {
+    const m = metodo === 'efectivo' ? 'Efectivo' : 'Nu/Transf.';
+    h += ` <span class="badge badge-${metodo==='efectivo'?'efectivo':'nu'}">${m}</span>`;
+  }
+  return h;
+}
+
+async function eliminar(id) {
+  if (!confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) return;
+  if (connected && db) {
+    await db.ref('movimientos/' + id).remove();
+  } else {
+    deleteLocalMovimiento(id);
+    movimientos = getLocalMovimientos();
+    renderAll();
+  }
+}
+
+// ─── CONSIGNACIONES ───────────────────────────────────────────
+function renderConsignaciones() {
+  const libs = {};
+  movimientos.forEach(m => {
+    if (m.tipo === 'consignacion' && m.libreria) {
+      if (!libs[m.libreria]) libs[m.libreria] = { consignados: 0, devueltos: 0, ultima: '' };
+      libs[m.libreria].consignados += m.cantidad;
+      if (m.fecha > libs[m.libreria].ultima) libs[m.libreria].ultima = m.fecha;
+    }
+    if (m.tipo === 'devolucion' && m.libreria) {
+      if (!libs[m.libreria]) libs[m.libreria] = { consignados: 0, devueltos: 0, ultima: '' };
+      libs[m.libreria].devueltos += m.cantidad;
+      if (m.fecha > libs[m.libreria].ultima) libs[m.libreria].ultima = m.fecha;
+    }
+  });
+
+  const keys = Object.keys(libs);
+  const el = document.getElementById('consig-body');
+  if (!keys.length) { el.innerHTML = '<div class="empty">No hay librerías registradas aún.</div>'; return; }
+
+  el.innerHTML = keys.map(k => {
+    const d = libs[k];
+    const activos = Math.max(0, d.consignados - d.devueltos);
+    return `<div class="consig-item">
+      <div>
+        <div class="consig-name">${k}</div>
+        <div class="consig-detail">Enviados: ${d.consignados} · Devueltos: ${d.devueltos} · Última mov: ${d.ultima||'—'}</div>
+      </div>
+      <div>
+        <div class="consig-num">${activos}</div>
+        <div class="consig-num-label">en librería</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────
+function renderConfig() {
+  const cfg = getFirebaseConfig();
+  if (cfg) {
+    document.getElementById('cfg-apiKey').value    = cfg.apiKey || '';
+    document.getElementById('cfg-authDomain').value= cfg.authDomain || '';
+    document.getElementById('cfg-databaseURL').value= cfg.databaseURL || '';
+    document.getElementById('cfg-projectId').value = cfg.projectId || '';
+    updateFirebaseStatus(connected);
+  }
+  document.getElementById('cfg-precio').value = precioBase;
+}
+
+function guardarConfig() {
+  const cfg = {
+    apiKey:      document.getElementById('cfg-apiKey').value.trim(),
+    authDomain:  document.getElementById('cfg-authDomain').value.trim(),
+    databaseURL: document.getElementById('cfg-databaseURL').value.trim(),
+    projectId:   document.getElementById('cfg-projectId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.databaseURL) {
+    alert('API Key y Database URL son obligatorios.');
+    return;
+  }
+  localStorage.setItem('jqd_firebase_cfg', JSON.stringify(cfg));
+  location.reload();
+}
+
+function borrarConfig() {
+  if (!confirm('¿Borrar la configuración de Firebase?')) return;
+  localStorage.removeItem('jqd_firebase_cfg');
+  location.reload();
+}
+
+function guardarPrecio() {
+  const p = parseInt(document.getElementById('cfg-precio').value) || 45000;
+  precioBase = p;
+  localStorage.setItem('jqd_precio', p);
+  document.getElementById('f-precio').value = p;
+  alert('Precio base guardado: ' + fmt(p));
+}
+
+// ─── CSV ──────────────────────────────────────────────────────
+function exportCSV() {
+  if (!movimientos.length) { alert('No hay movimientos para exportar.'); return; }
+  const header = 'Fecha,Tipo,Cantidad,Precio unitario,Total COP,Método de pago,Detalle,Nota';
+  const rows = movimientos.map(m =>
+    [m.fecha, m.tipo, m.cantidad, m.precio||0, m.total||0, m.metodo||'',
+     `"${(m.detalle||'').replace(/"/g,'""')}"`,
+     `"${(m.nota||'').replace(/"/g,'""')}"`
+    ].join(',')
+  );
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = 'inventario_jaquea_tu_duelo_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
