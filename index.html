@@ -558,12 +558,24 @@
       </div>
       <div class="form-grid">
         <div class="form-group">
+          <label>Producto</label>
+          <select id="f-producto">
+            <option value="libro">Libro solo</option>
+            <option value="pack">Pack (libro + libretas)</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Cantidad</label>
           <input type="number" id="f-cantidad" min="1" value="1">
         </div>
+      </div>
+      <div class="form-grid">
         <div class="form-group" id="col-precio">
-          <label>Precio por libro (COP)</label>
+          <label>Precio por unidad (COP)</label>
           <input type="number" id="f-precio" placeholder="0">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <div id="total-preview" style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ink-muted);padding-bottom:9px"></div>
         </div>
       </div>
       <div class="form-grid" id="row-metodo-comprador">
@@ -731,6 +743,8 @@ window.addEventListener('load', () => {
   setToday();
   onTipoChange();
   document.getElementById('f-precio').value = precioBase;
+  document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
+  document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   renderConfig();
 });
 
@@ -890,7 +904,7 @@ function renderResumen() {
       <div class="recent-dot" style="background:${colors[m.tipo]||'#ccc'}"></div>
       <div class="recent-info">
         <div class="recent-title">${labelTipo(m.tipo)} ${m.detalle ? '· ' + m.detalle : ''}</div>
-        <div class="recent-sub">${m.fecha} · ${m.cantidad} libro${m.cantidad!==1?'s':''}</div>
+        <div class="recent-sub">${m.fecha} · ${m.cantidad} ${m.producto==='pack'?'pack(s)':'libro(s)'}</div>
       </div>
       <div class="recent-amount">${m.total > 0 ? fmt(m.total) : '—'}</div>
     </div>
@@ -917,6 +931,21 @@ function onTipoChange() {
   document.getElementById('row-libreria').style.display = (t === 'consignacion' || t === 'devolucion') ? 'grid' : 'none';
   document.getElementById('row-destinatario').style.display = t === 'regalo' ? 'grid' : 'none';
   document.getElementById('col-precio').style.display = t === 'venta' ? 'block' : 'none';
+  updateTotalPreview();
+}
+
+function updateTotalPreview() {
+  const t = document.getElementById('f-tipo').value;
+  const cantidad = parseInt(document.getElementById('f-cantidad').value) || 0;
+  const precio = parseFloat(document.getElementById('f-precio').value) || 0;
+  const el = document.getElementById('total-preview');
+  if (el) {
+    if (t === 'venta' && cantidad > 0 && precio > 0) {
+      el.textContent = '= ' + fmt(cantidad * precio);
+    } else {
+      el.textContent = '';
+    }
+  }
 }
 
 function setToday() {
@@ -926,8 +955,11 @@ function setToday() {
 function resetForm() {
   setToday();
   document.getElementById('f-tipo').value = 'venta';
+  document.getElementById('f-producto').value = 'libro';
   document.getElementById('f-cantidad').value = 1;
   document.getElementById('f-precio').value = precioBase;
+  document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
+  document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   document.getElementById('f-metodo').value = 'nu';
   ['f-comprador','f-libreria','f-destinatario','f-nota'].forEach(id => {
     const el = document.getElementById(id);
@@ -969,10 +1001,13 @@ async function guardar() {
   if (tipo === 'regalo')      detalle = destinatario;
   if (tipo === 'consignacion' || tipo === 'devolucion') detalle = libreria;
 
+  const producto = document.getElementById('f-producto').value;
+
   const mov = {
     id: Date.now().toString(),
     ts: Date.now(),
     tipo, fecha, cantidad,
+    producto,
     precio: tipo === 'venta' ? precio : 0,
     total:  tipo === 'venta' ? cantidad * precio : 0,
     metodo: tipo === 'venta' ? metodo : '',
@@ -1019,12 +1054,13 @@ function renderHistorial() {
 
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Fecha</th><th>Tipo</th><th>Cant.</th><th>Precio u.</th><th>Total</th><th>Detalle</th><th>Nota</th><th></th>
+      <th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cant.</th><th>Precio u.</th><th>Total</th><th>Detalle</th><th>Nota</th><th></th>
     </tr></thead>
     <tbody>
     ${movs.map(m => `<tr>
       <td>${m.fecha}</td>
       <td>${badgeHTML(m.tipo, m.metodo)}</td>
+      <td><span class="badge ${m.producto==='pack'?'badge-devolucion':'badge-consignacion'}">${m.producto==='pack'?'Pack':'Libro'}</span></td>
       <td>${m.tipo==='devolucion'?'+':'-'}${m.cantidad}</td>
       <td>${m.precio > 0 ? fmt(m.precio) : '—'}</td>
       <td>${m.total > 0 ? fmt(m.total) : '—'}</td>
@@ -1033,8 +1069,8 @@ function renderHistorial() {
       <td><button class="btn btn-danger" onclick="eliminar('${m.id}')">Borrar</button></td>
     </tr>`).join('')}
     <tr class="total-row">
-      <td colspan="2">Totales</td>
-      <td>${totalLib} libros</td>
+      <td colspan="3">Totales</td>
+      <td>${totalLib} unidades</td>
       <td></td>
       <td>${fmt(totalDin)}</td>
       <td colspan="3"></td>
