@@ -505,7 +505,7 @@
   <button class="nav-btn active" onclick="showTab('resumen')">Resumen</button>
   <button class="nav-btn" onclick="showTab('registrar')">Registrar</button>
   <button class="nav-btn" onclick="showTab('historial')">Historial</button>
-  <button class="nav-btn" onclick="showTab('consignaciones')">Librerías</button>
+  <button class="nav-btn" onclick="showTab('consignaciones')">Distribución</button>
   <button class="nav-btn" onclick="showTab('config')">Configuración</button>
 </nav>
 
@@ -547,8 +547,13 @@
           <select id="f-tipo" onchange="onTipoChange()">
             <option value="venta">Venta</option>
             <option value="regalo">Regalo / Donación</option>
-            <option value="consignacion">Consignación a librería</option>
-            <option value="devolucion">Devolución de librería</option>
+            <option value="libreria">Consignación · Librería</option>
+            <option value="cartagena">Envío · Cartagena</option>
+            <option value="feria">Envío · Feria o evento</option>
+            <option value="prensa">Envío · Prensa y medios</option>
+            <option value="institucional">Envío · Institucional</option>
+            <option value="internacional">Envío · Internacional</option>
+            <option value="devolucion">Devolución (cualquier canal)</option>
           </select>
         </div>
         <div class="form-group">
@@ -581,8 +586,11 @@
       <div class="form-grid" id="row-metodo-comprador">
         <div class="form-group">
           <label>Método de pago</label>
-          <select id="f-metodo">
+          <select id="f-metodo" onchange="onMetodoChange()">
             <option value="nu">Nu / Nequi / Transferencia</option>
+            <option value="qr">Código QR</option>
+            <option value="datafono">Datáfono</option>
+            <option value="link">Link de pago</option>
             <option value="efectivo">Efectivo</option>
             <option value="otro">Otro</option>
           </select>
@@ -590,6 +598,12 @@
         <div class="form-group">
           <label>Nombre del comprador</label>
           <input type="text" id="f-comprador" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="form-grid full" id="row-plataforma" style="display:none">
+        <div class="form-group">
+          <label>Plataforma de pago</label>
+          <input type="text" id="f-plataforma" placeholder="Ej: Wompi, Bold, PayU...">
         </div>
       </div>
       <div class="form-grid full" id="row-libreria" style="display:none">
@@ -624,7 +638,12 @@
         <option value="">Todos los tipos</option>
         <option value="venta">Ventas</option>
         <option value="regalo">Regalos</option>
-        <option value="consignacion">Consignaciones</option>
+        <option value="libreria">Librerías</option>
+        <option value="cartagena">Cartagena</option>
+        <option value="feria">Ferias</option>
+        <option value="prensa">Prensa</option>
+        <option value="institucional">Institucional</option>
+        <option value="internacional">Internacional</option>
         <option value="devolucion">Devoluciones</option>
       </select>
       <input type="month" id="h-mes" onchange="renderHistorial()">
@@ -816,17 +835,25 @@ function showTab(id) {
 }
 
 // ─── STATS CALC ───────────────────────────────────────────────
+const CANALES_ENVIO = ['libreria','cartagena','feria','prensa','institucional','internacional'];
+
 function calcStats() {
-  let vendidos=0, regalados=0, consignados=0, devueltos=0, ingresos=0;
+  let vendidos=0, regalados=0, enviados=0, devueltos=0, ingresos=0;
+  const porCanal = {};
+  CANALES_ENVIO.forEach(c => porCanal[c] = 0);
+
   movimientos.forEach(m => {
-    if (m.tipo === 'venta')        { vendidos += m.cantidad; ingresos += (m.total || 0); }
-    if (m.tipo === 'regalo')        regalados += m.cantidad;
-    if (m.tipo === 'consignacion')  consignados += m.cantidad;
-    if (m.tipo === 'devolucion')    devueltos += m.cantidad;
+    if (m.tipo === 'venta')   { vendidos += m.cantidad; ingresos += (m.total || 0); }
+    if (m.tipo === 'regalo')    regalados += m.cantidad;
+    if (m.tipo === 'devolucion') devueltos += m.cantidad;
+    if (CANALES_ENVIO.includes(m.tipo)) {
+      enviados += m.cantidad;
+      porCanal[m.tipo] = (porCanal[m.tipo] || 0) + m.cantidad;
+    }
   });
-  const enLibrerias = Math.max(0, consignados - devueltos);
-  const salidos = vendidos + regalados + enLibrerias;
-  return { vendidos, regalados, consignados, devueltos, enLibrerias, ingresos,
+  const enCirculacion = Math.max(0, enviados - devueltos);
+  const salidos = vendidos + regalados + enCirculacion;
+  return { vendidos, regalados, enviados, devueltos, enCirculacion, ingresos, porCanal,
     stock: Math.max(0, STOCK_INICIAL - salidos) };
 }
 
@@ -867,12 +894,12 @@ function renderResumen() {
     <div class="stat s-dinero">
       <div class="stat-label">Ingresos</div>
       <div class="stat-val money">${fmtCompact(s.ingresos)}</div>
-      <div class="stat-sub">${s.vendidos} libros vendidos</div>
+      <div class="stat-sub">${s.vendidos} vendidos</div>
     </div>
     <div class="stat s-librerias">
-      <div class="stat-label">En librerías</div>
-      <div class="stat-val">${s.enLibrerias}</div>
-      <div class="stat-sub">en consignación</div>
+      <div class="stat-label">En circulación</div>
+      <div class="stat-val">${s.enCirculacion}</div>
+      <div class="stat-sub">en canales activos</div>
     </div>
     <div class="stat s-regalados">
       <div class="stat-label">Regalados</div>
@@ -886,10 +913,10 @@ function renderResumen() {
 
   const total = STOCK_INICIAL;
   document.getElementById('dist-rows').innerHTML = `
-    ${distRow('Vendidos',    s.vendidos,    total, '#6B7C6E')}
-    ${distRow('Regalados',   s.regalados,   total, '#9B8AC4')}
-    ${distRow('En librerías',s.enLibrerias, total, '#5A6B7A')}
-    ${distRow('Disponibles', s.stock,       total, '#B8924A')}
+    ${distRow('Vendidos',      s.vendidos,       total, '#6B7C6E')}
+    ${distRow('Regalados',     s.regalados,      total, '#9B8AC4')}
+    ${distRow('En circulación',s.enCirculacion,  total, '#5A6B7A')}
+    ${distRow('Disponibles',   s.stock,          total, '#B8924A')}
   `;
 
   const recientes = movimientos.slice(-6).reverse();
@@ -921,17 +948,42 @@ function distRow(label, val, total, color) {
 }
 
 function labelTipo(tipo) {
-  return {venta:'Venta',regalo:'Regalo',consignacion:'Consignación',devolucion:'Devolución'}[tipo] || tipo;
+  return {
+    venta:'Venta', regalo:'Regalo', devolucion:'Devolución',
+    libreria:'Librería', cartagena:'Cartagena', feria:'Feria',
+    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional'
+  }[tipo] || tipo;
 }
 
 // ─── FORM ─────────────────────────────────────────────────────
 function onTipoChange() {
   const t = document.getElementById('f-tipo').value;
+  const esEnvio = ['libreria','cartagena','feria','prensa','institucional','internacional','devolucion'].includes(t);
   document.getElementById('row-metodo-comprador').style.display = t === 'venta' ? 'grid' : 'none';
-  document.getElementById('row-libreria').style.display = (t === 'consignacion' || t === 'devolucion') ? 'grid' : 'none';
+  document.getElementById('row-libreria').style.display = esEnvio ? 'grid' : 'none';
   document.getElementById('row-destinatario').style.display = t === 'regalo' ? 'grid' : 'none';
   document.getElementById('col-precio').style.display = t === 'venta' ? 'block' : 'none';
+  // Update libreria label
+  const libLabel = document.querySelector('#row-libreria label');
+  if (libLabel) {
+    const labels = {
+      libreria: 'Nombre de la librería',
+      cartagena: 'Contacto en Cartagena',
+      feria: 'Nombre de la feria o evento',
+      prensa: 'Medio o periodista',
+      institucional: 'Institución',
+      internacional: 'País y contacto',
+      devolucion: 'Canal que devuelve'
+    };
+    libLabel.textContent = labels[t] || 'Destino';
+  }
   updateTotalPreview();
+}
+
+function onMetodoChange() {
+  const m = document.getElementById('f-metodo').value;
+  const row = document.getElementById('row-plataforma');
+  if (row) row.style.display = m === 'link' ? 'grid' : 'none';
 }
 
 function updateTotalPreview() {
@@ -961,7 +1013,8 @@ function resetForm() {
   document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
   document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   document.getElementById('f-metodo').value = 'nu';
-  ['f-comprador','f-libreria','f-destinatario','f-nota'].forEach(id => {
+  onMetodoChange();
+  ['f-comprador','f-libreria','f-destinatario','f-nota','f-plataforma'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -983,7 +1036,8 @@ async function guardar() {
   const comprador    = (document.getElementById('f-comprador')?.value || '').trim();
   const libreria     = (document.getElementById('f-libreria')?.value || '').trim();
   const destinatario = (document.getElementById('f-destinatario')?.value || '').trim();
-  const nota     = (document.getElementById('f-nota')?.value || '').trim();
+  const nota      = (document.getElementById('f-nota')?.value || '').trim();
+  const plataforma = (document.getElementById('f-plataforma')?.value || '').trim();
 
   if (!fecha)     { setAlert(alertEl, 'Selecciona una fecha.', 'warn'); return; }
   if (cantidad < 1){ setAlert(alertEl, 'La cantidad debe ser al menos 1.', 'warn'); return; }
@@ -997,9 +1051,9 @@ async function guardar() {
   }
 
   let detalle = '';
-  if (tipo === 'venta')       detalle = comprador;
-  if (tipo === 'regalo')      detalle = destinatario;
-  if (tipo === 'consignacion' || tipo === 'devolucion') detalle = libreria;
+  if (tipo === 'venta')    detalle = comprador;
+  if (tipo === 'regalo')   detalle = destinatario;
+  if ([...CANALES_ENVIO, 'devolucion'].includes(tipo)) detalle = libreria;
 
   const producto = document.getElementById('f-producto').value;
 
@@ -1011,8 +1065,9 @@ async function guardar() {
     precio: tipo === 'venta' ? precio : 0,
     total:  tipo === 'venta' ? cantidad * precio : 0,
     metodo: tipo === 'venta' ? metodo : '',
+    plataforma: tipo === 'venta' && metodo === 'link' ? plataforma : '',
     detalle, nota,
-    libreria: (tipo === 'consignacion' || tipo === 'devolucion') ? libreria : ''
+    libreria: ([...CANALES_ENVIO, 'devolucion'].includes(tipo)) ? libreria : ''
   };
 
   const btn = document.getElementById('btn-guardar');
@@ -1080,11 +1135,21 @@ function renderHistorial() {
 }
 
 function badgeHTML(tipo, metodo) {
-  const labels = {venta:'Venta',regalo:'Regalo',consignacion:'Consignación',devolucion:'Devolución'};
-  let h = `<span class="badge badge-${tipo}">${labels[tipo]||tipo}</span>`;
+  const labels = {
+    venta:'Venta', regalo:'Regalo', devolucion:'Devolución',
+    libreria:'Librería', cartagena:'Cartagena', feria:'Feria',
+    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional'
+  };
+  const cls = {
+    venta:'venta', regalo:'regalo', devolucion:'devolucion',
+    libreria:'consignacion', cartagena:'consignacion', feria:'consignacion',
+    prensa:'consignacion', institucional:'consignacion', internacional:'consignacion'
+  };
+  let h = `<span class="badge badge-${cls[tipo]||'consignacion'}">${labels[tipo]||tipo}</span>`;
   if (tipo === 'venta' && metodo) {
-    const m = metodo === 'efectivo' ? 'Efectivo' : 'Nu/Transf.';
-    h += ` <span class="badge badge-${metodo==='efectivo'?'efectivo':'nu'}">${m}</span>`;
+    const labels = {nu:'Nu/Transf.', qr:'QR', datafono:'Datáfono', link:'Link pago', efectivo:'Efectivo', otro:'Otro'};
+    const cls = {nu:'nu', qr:'nu', datafono:'nu', link:'nu', efectivo:'efectivo', otro:'efectivo'};
+    h += ` <span class="badge badge-${cls[metodo]||'efectivo'}">${labels[metodo]||metodo}</span>`;
   }
   return h;
 }
@@ -1101,39 +1166,73 @@ async function eliminar(id) {
 }
 
 // ─── CONSIGNACIONES ───────────────────────────────────────────
+const CANAL_LABELS = {
+  libreria:'Librería', cartagena:'Cartagena', feria:'Feria / Evento',
+  prensa:'Prensa y medios', institucional:'Institucional', internacional:'Internacional'
+};
+const CANAL_COLORS = {
+  libreria:'#5A6B7A', cartagena:'#B8924A', feria:'#6B7C6E',
+  prensa:'#9B8AC4', institucional:'#C47B6E', internacional:'#4A8C8C'
+};
+
 function renderConsignaciones() {
-  const libs = {};
+  // Group by canal then by destination
+  const canales = {};
+  CANALES_ENVIO.forEach(c => canales[c] = {});
+
   movimientos.forEach(m => {
-    if (m.tipo === 'consignacion' && m.libreria) {
-      if (!libs[m.libreria]) libs[m.libreria] = { consignados: 0, devueltos: 0, ultima: '' };
-      libs[m.libreria].consignados += m.cantidad;
-      if (m.fecha > libs[m.libreria].ultima) libs[m.libreria].ultima = m.fecha;
+    if (CANALES_ENVIO.includes(m.tipo) && m.libreria) {
+      if (!canales[m.tipo][m.libreria]) canales[m.tipo][m.libreria] = { enviados:0, devueltos:0, ultima:'' };
+      canales[m.tipo][m.libreria].enviados += m.cantidad;
+      if (m.fecha > canales[m.tipo][m.libreria].ultima) canales[m.tipo][m.libreria].ultima = m.fecha;
     }
     if (m.tipo === 'devolucion' && m.libreria) {
-      if (!libs[m.libreria]) libs[m.libreria] = { consignados: 0, devueltos: 0, ultima: '' };
-      libs[m.libreria].devueltos += m.cantidad;
-      if (m.fecha > libs[m.libreria].ultima) libs[m.libreria].ultima = m.fecha;
+      // Find which canal this belongs to by matching libreria name
+      CANALES_ENVIO.forEach(c => {
+        if (canales[c][m.libreria]) {
+          canales[c][m.libreria].devueltos += m.cantidad;
+          if (m.fecha > canales[c][m.libreria].ultima) canales[c][m.libreria].ultima = m.fecha;
+        }
+      });
     }
   });
 
-  const keys = Object.keys(libs);
   const el = document.getElementById('consig-body');
-  if (!keys.length) { el.innerHTML = '<div class="empty">No hay librerías registradas aún.</div>'; return; }
+  let html = '';
+  let hayAlgo = false;
 
-  el.innerHTML = keys.map(k => {
-    const d = libs[k];
-    const activos = Math.max(0, d.consignados - d.devueltos);
-    return `<div class="consig-item">
-      <div>
-        <div class="consig-name">${k}</div>
-        <div class="consig-detail">Enviados: ${d.consignados} · Devueltos: ${d.devueltos} · Última mov: ${d.ultima||'—'}</div>
-      </div>
-      <div>
-        <div class="consig-num">${activos}</div>
-        <div class="consig-num-label">en librería</div>
-      </div>
-    </div>`;
-  }).join('');
+  CANALES_ENVIO.forEach(canal => {
+    const destinos = Object.keys(canales[canal]);
+    if (!destinos.length) return;
+    hayAlgo = true;
+    const color = CANAL_COLORS[canal] || '#888';
+    const label = CANAL_LABELS[canal] || canal;
+    const totalCanal = destinos.reduce((a, k) => a + Math.max(0, canales[canal][k].enviados - canales[canal][k].devueltos), 0);
+
+    html += `<div style="margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:${color}">${label}</div>
+        <div style="font-size:12px;color:var(--ink-muted)">${totalCanal} activos</div>
+      </div>`;
+
+    destinos.forEach(k => {
+      const d = canales[canal][k];
+      const activos = Math.max(0, d.enviados - d.devueltos);
+      html += `<div class="consig-item">
+        <div>
+          <div class="consig-name">${k}</div>
+          <div class="consig-detail">Enviados: ${d.enviados} · Devueltos: ${d.devueltos} · Última: ${d.ultima||'—'}</div>
+        </div>
+        <div>
+          <div class="consig-num" style="color:${color}">${activos}</div>
+          <div class="consig-num-label">en circulación</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = hayAlgo ? html : '<div class="empty">No hay envíos registrados aún.</div>';
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────
