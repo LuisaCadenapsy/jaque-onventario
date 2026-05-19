@@ -1332,11 +1332,18 @@ function renderConsignaciones() {
         }
       });
     }
-    if (VENTAS_CANAL.includes(m.tipo) && m.libreria) {
+    if (VENTAS_CANAL.includes(m.tipo)) {
       const canal = m.tipo.replace('venta_','');
-      if (canales[canal] && canales[canal][m.libreria]) {
-        canales[canal][m.libreria].devueltos += m.cantidad;
-        if (m.fecha > canales[canal][m.libreria].ultima) canales[canal][m.libreria].ultima = m.fecha;
+      if (canales[canal]) {
+        // Match by libreria name if provided, otherwise apply to first entry in canal
+        const key = m.libreria && canales[canal][m.libreria] 
+          ? m.libreria 
+          : Object.keys(canales[canal])[0];
+        if (key && canales[canal][key]) {
+          if (!canales[canal][key].vendidos) canales[canal][key].vendidos = 0;
+          canales[canal][key].vendidos += m.cantidad;
+          if (m.fecha > canales[canal][key].ultima) canales[canal][key].ultima = m.fecha;
+        }
       }
     }
   });
@@ -1351,7 +1358,7 @@ function renderConsignaciones() {
     hayAlgo = true;
     const color = CANAL_COLORS[canal] || '#888';
     const label = CANAL_LABELS[canal] || canal;
-    const totalCanal = destinos.reduce((a, k) => a + Math.max(0, canales[canal][k].enviados - canales[canal][k].devueltos), 0);
+    const totalCanal = destinos.reduce((a, k) => a + Math.max(0, canales[canal][k].enviados - canales[canal][k].devueltos - (canales[canal][k].vendidos||0)), 0);
 
     html += `<div style="margin-bottom:1.25rem">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -1362,13 +1369,15 @@ function renderConsignaciones() {
     destinos.forEach(k => {
       const d = canales[canal][k];
       const activos = Math.max(0, d.enviados - d.devueltos);
+      const vendidos = d.vendidos || 0;
+      const activos2 = Math.max(0, d.enviados - d.devueltos - vendidos);
       html += `<div class="consig-item">
         <div>
           <div class="consig-name">${k}</div>
-          <div class="consig-detail">Enviados: ${d.enviados} · Devueltos: ${d.devueltos} · Última: ${d.ultima||'—'}</div>
+          <div class="consig-detail">Enviados: ${d.enviados} · Vendidos allá: ${vendidos} · Devueltos: ${d.devueltos} · Última: ${d.ultima||'—'}</div>
         </div>
         <div>
-          <div class="consig-num" style="color:${color}">${activos}</div>
+          <div class="consig-num" style="color:${color}">${activos2}</div>
           <div class="consig-num-label">en circulación</div>
         </div>
       </div>`;
