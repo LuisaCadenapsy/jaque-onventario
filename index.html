@@ -483,6 +483,41 @@
   .config-row:last-child { border-bottom: none; }
   .config-key { font-family: 'DM Sans', monospace; font-size: 11px; background: var(--cream); padding: 2px 8px; border-radius: 4px; color: var(--ink-soft); word-break: break-all; }
 
+  .nota-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .nota-item:last-child { border-bottom: none; }
+  .nota-item.done .nota-texto { text-decoration: line-through; color: var(--ink-muted); }
+  .nota-check {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    background: white;
+    transition: all 0.15s;
+  }
+  .nota-check.checked { background: var(--sage); border-color: var(--sage); color: white; }
+  .nota-texto { flex: 1; font-size: 13px; color: var(--ink); }
+  .nota-cant { font-family: "Cormorant Garamond", serif; font-size: 18px; color: var(--ink-muted); margin-right: 4px; flex-shrink: 0; }
+  .nota-del { background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 16px; padding: 2px 4px; flex-shrink: 0; }
+  .nota-del:hover { color: var(--rose); }
+  .nota-libre-box {
+    background: var(--gold-light);
+    border-radius: var(--r-sm);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    margin-bottom: 10px;
+  }
   .section-note {
     font-size: 13px;
     color: var(--ink-muted);
@@ -506,6 +541,7 @@
   <button class="nav-btn" onclick="showTab('registrar')">Registrar</button>
   <button class="nav-btn" onclick="showTab('historial')">Historial</button>
   <button class="nav-btn" onclick="showTab('consignaciones')">Distribución</button>
+  <button class="nav-btn" onclick="showTab('notas')">Notas</button>
   <button class="nav-btn" onclick="showTab('config')">Configuración</button>
 </nav>
 
@@ -673,6 +709,71 @@
     </div>
   </div>
 
+  <!-- NOTAS -->
+  <div id="tab-notas" class="section">
+
+    <div class="card">
+      <div class="card-title">Nota libre</div>
+      <div class="form-group">
+        <textarea id="nota-libre" placeholder="Escribe aquí lo que no puedes olvidar..." style="min-height:100px"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="guardarNotaLibre()">Guardar nota</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 Por enviar</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" id="enviar-desc" placeholder="Ej: 3 libros para Marcela por correo">
+        </div>
+        <div class="form-group">
+          <label>Cantidad (opcional)</label>
+          <input type="number" id="enviar-cant" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="agregarItem('enviar')">Agregar</button>
+      </div>
+      <div id="lista-enviar" style="margin-top:1rem"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏠 Ubicaciones</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Lugar</label>
+          <input type="text" id="ubic-desc" placeholder="Ej: Consultorio, cajas en casa...">
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" id="ubic-cant" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="agregarItem('ubic')">Agregar</button>
+      </div>
+      <div id="lista-ubic" style="margin-top:1rem"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✅ Tareas pendientes</div>
+      <div class="form-grid full">
+        <div class="form-group">
+          <label>Tarea</label>
+          <input type="text" id="tarea-desc" placeholder="Ej: Llamar a Librería Nacional para confirmar consignación">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="agregarItem('tarea')">Agregar</button>
+      </div>
+      <div id="lista-tarea" style="margin-top:1rem"></div>
+    </div>
+
+  </div>
+
   <!-- CONFIG -->
   <div id="tab-config" class="section">
     <p class="section-note">Para conectar la app a Firebase (base de datos compartida en la nube), ingresa los datos de tu proyecto. Solo necesitas hacerlo una vez.</p>
@@ -773,6 +874,7 @@ window.addEventListener('load', () => {
   setToday();
   onTipoChange();
   document.getElementById('f-precio').value = precioBase;
+  initNotas();
   document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
   document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   renderConfig();
@@ -836,7 +938,7 @@ function showTab(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
-  const tabs = ['resumen','registrar','historial','consignaciones','config'];
+  const tabs = ['resumen','registrar','historial','consignaciones','notas','config'];
   const btns = document.querySelectorAll('.nav-btn');
   btns[tabs.indexOf(id)]?.classList.add('active');
   if (id === 'historial') renderHistorial();
@@ -1275,6 +1377,108 @@ function renderConsignaciones() {
   });
 
   el.innerHTML = hayAlgo ? html : '<div class="empty">No hay envíos registrados aún.</div>';
+}
+
+// ─── NOTAS ────────────────────────────────────────────────────
+function getNotas() {
+  try { return JSON.parse(localStorage.getItem('jqd_notas') || '{"libre":"","enviar":[],"ubic":[],"tarea":[]}'); }
+  catch(e) { return {libre:'',enviar:[],ubic:[],tarea:[]}; }
+}
+
+function saveNotas(n) {
+  localStorage.setItem('jqd_notas', JSON.stringify(n));
+  // Also sync to Firebase if connected
+  if (connected && db) {
+    db.ref('notas').set(n);
+  }
+}
+
+function initNotas() {
+  if (connected && db) {
+    db.ref('notas').on('value', snap => {
+      const val = snap.val();
+      if (val) {
+        localStorage.setItem('jqd_notas', JSON.stringify(val));
+      }
+      renderNotas();
+    });
+  } else {
+    renderNotas();
+  }
+}
+
+function renderNotas() {
+  const n = getNotas();
+  // Nota libre
+  const nlEl = document.getElementById('nota-libre');
+  if (nlEl && !nlEl.dataset.dirty) nlEl.value = n.libre || '';
+
+  // Listas
+  renderLista('enviar', n.enviar || [], true);
+  renderLista('ubic',   n.ubic   || [], true);
+  renderLista('tarea',  n.tarea  || [], false);
+}
+
+function renderLista(tipo, items, mostrarCant) {
+  const el = document.getElementById('lista-' + tipo);
+  if (!el) return;
+  if (!items.length) { el.innerHTML = '<div class="empty" style="padding:1rem">Sin items aún.</div>'; return; }
+  el.innerHTML = items.map((item, i) => `
+    <div class="nota-item ${item.done ? 'done' : ''}">
+      <div class="nota-check ${item.done ? 'checked' : ''}" onclick="toggleItem('${tipo}',${i})">
+        ${item.done ? '✓' : ''}
+      </div>
+      ${mostrarCant && item.cant ? `<div class="nota-cant">${item.cant}</div>` : ''}
+      <div class="nota-texto">${item.desc}</div>
+      <button class="nota-del" onclick="eliminarItem('${tipo}',${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function guardarNotaLibre() {
+  const val = document.getElementById('nota-libre').value;
+  const n = getNotas();
+  n.libre = val;
+  saveNotas(n);
+  document.getElementById('nota-libre').dataset.dirty = '';
+  // Show brief confirmation
+  const btn = event.target;
+  btn.textContent = '✓ Guardado';
+  setTimeout(() => btn.textContent = 'Guardar nota', 1500);
+}
+
+function agregarItem(tipo) {
+  const descEl = document.getElementById(tipo + '-desc');
+  const cantEl = document.getElementById(tipo + '-cant');
+  const desc = descEl ? descEl.value.trim() : '';
+  if (!desc) { descEl.focus(); return; }
+  const cant = cantEl ? (parseInt(cantEl.value) || 0) : 0;
+
+  const n = getNotas();
+  if (!n[tipo]) n[tipo] = [];
+  n[tipo].unshift({ desc, cant, done: false, id: Date.now() });
+  saveNotas(n);
+  descEl.value = '';
+  if (cantEl) cantEl.value = '';
+  renderNotas();
+}
+
+function toggleItem(tipo, idx) {
+  const n = getNotas();
+  if (n[tipo] && n[tipo][idx] !== undefined) {
+    n[tipo][idx].done = !n[tipo][idx].done;
+    saveNotas(n);
+    renderNotas();
+  }
+}
+
+function eliminarItem(tipo, idx) {
+  const n = getNotas();
+  if (n[tipo]) {
+    n[tipo].splice(idx, 1);
+    saveNotas(n);
+    renderNotas();
+  }
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────
