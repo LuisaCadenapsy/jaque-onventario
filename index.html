@@ -554,6 +554,12 @@
             <option value="institucional">Envío · Institucional</option>
             <option value="internacional">Envío · Internacional</option>
             <option value="devolucion">Devolución (cualquier canal)</option>
+            <optgroup label="─── Ventas en canal ───"></optgroup>
+            <option value="venta_libreria">Venta en librería</option>
+            <option value="venta_cartagena">Venta en Cartagena</option>
+            <option value="venta_feria">Venta en feria</option>
+            <option value="venta_institucional">Venta institucional</option>
+            <option value="venta_internacional">Venta internacional</option>
           </select>
         </div>
         <div class="form-group">
@@ -645,6 +651,11 @@
         <option value="institucional">Institucional</option>
         <option value="internacional">Internacional</option>
         <option value="devolucion">Devoluciones</option>
+        <option value="venta_cartagena">Ventas Cartagena</option>
+        <option value="venta_libreria">Ventas librería</option>
+        <option value="venta_feria">Ventas feria</option>
+        <option value="venta_institucional">Ventas institucional</option>
+        <option value="venta_internacional">Ventas internacional</option>
       </select>
       <input type="month" id="h-mes" onchange="renderHistorial()">
       <button class="btn btn-ghost" onclick="exportCSV()" style="flex:none">Exportar CSV</button>
@@ -836,12 +847,14 @@ function showTab(id) {
 
 // ─── STATS CALC ───────────────────────────────────────────────
 const CANALES_ENVIO = ['libreria','cartagena','feria','prensa','institucional','internacional'];
+const VENTAS_CANAL = ['venta_libreria','venta_cartagena','venta_feria','venta_institucional','venta_internacional'];
 
 function calcStats() {
   let vendidos=0, regalados=0, enviados=0, devueltos=0, ingresos=0;
   const porCanal = {};
   CANALES_ENVIO.forEach(c => porCanal[c] = 0);
 
+  let ventasCanal = 0;
   movimientos.forEach(m => {
     if (m.tipo === 'venta')   { vendidos += m.cantidad; ingresos += (m.total || 0); }
     if (m.tipo === 'regalo')    regalados += m.cantidad;
@@ -850,10 +863,18 @@ function calcStats() {
       enviados += m.cantidad;
       porCanal[m.tipo] = (porCanal[m.tipo] || 0) + m.cantidad;
     }
+    if (VENTAS_CANAL.includes(m.tipo)) {
+      ventasCanal += m.cantidad;
+      ingresos += (m.total || 0);
+      // Descontar del canal correspondiente
+      const canal = m.tipo.replace('venta_','');
+      porCanal[canal] = (porCanal[canal] || 0) - m.cantidad;
+    }
   });
-  const enCirculacion = Math.max(0, enviados - devueltos);
-  const salidos = vendidos + regalados + enCirculacion;
-  return { vendidos, regalados, enviados, devueltos, enCirculacion, ingresos, porCanal,
+  const totalVendidos = vendidos + ventasCanal;
+  const enCirculacion = Math.max(0, enviados - devueltos - ventasCanal);
+  const salidos = totalVendidos + regalados + enCirculacion;
+  return { vendidos: totalVendidos, regalados, enviados, devueltos, enCirculacion, ingresos, porCanal,
     stock: Math.max(0, STOCK_INICIAL - salidos) };
 }
 
@@ -951,7 +972,10 @@ function labelTipo(tipo) {
   return {
     venta:'Venta', regalo:'Regalo', devolucion:'Devolución',
     libreria:'Librería', cartagena:'Cartagena', feria:'Feria',
-    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional'
+    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional',
+    venta_libreria:'Venta · Librería', venta_cartagena:'Venta · Cartagena',
+    venta_feria:'Venta · Feria', venta_institucional:'Venta · Institucional',
+    venta_internacional:'Venta · Internacional'
   }[tipo] || tipo;
 }
 
@@ -959,10 +983,11 @@ function labelTipo(tipo) {
 function onTipoChange() {
   const t = document.getElementById('f-tipo').value;
   const esEnvio = ['libreria','cartagena','feria','prensa','institucional','internacional','devolucion'].includes(t);
-  document.getElementById('row-metodo-comprador').style.display = t === 'venta' ? 'grid' : 'none';
-  document.getElementById('row-libreria').style.display = esEnvio ? 'grid' : 'none';
+  const esVentaCanal = VENTAS_CANAL.includes(t);
+  document.getElementById('row-metodo-comprador').style.display = (t === 'venta' || esVentaCanal) ? 'grid' : 'none';
+  document.getElementById('row-libreria').style.display = (esEnvio || esVentaCanal) ? 'grid' : 'none';
   document.getElementById('row-destinatario').style.display = t === 'regalo' ? 'grid' : 'none';
-  document.getElementById('col-precio').style.display = t === 'venta' ? 'block' : 'none';
+  document.getElementById('col-precio').style.display = (t === 'venta' || esVentaCanal) ? 'block' : 'none';
   // Update libreria label
   const libLabel = document.querySelector('#row-libreria label');
   if (libLabel) {
@@ -973,7 +998,12 @@ function onTipoChange() {
       prensa: 'Medio o periodista',
       institucional: 'Institución',
       internacional: 'País y contacto',
-      devolucion: 'Canal que devuelve'
+      devolucion: 'Canal que devuelve',
+      venta_libreria: 'Librería',
+      venta_cartagena: 'Contacto en Cartagena',
+      venta_feria: 'Feria o evento',
+      venta_institucional: 'Institución',
+      venta_internacional: 'País y contacto'
     };
     libLabel.textContent = labels[t] || 'Destino';
   }
@@ -1054,6 +1084,7 @@ async function guardar() {
   if (tipo === 'venta')    detalle = comprador;
   if (tipo === 'regalo')   detalle = destinatario;
   if ([...CANALES_ENVIO, 'devolucion'].includes(tipo)) detalle = libreria;
+  if (VENTAS_CANAL.includes(tipo)) detalle = libreria;
 
   const producto = document.getElementById('f-producto').value;
 
@@ -1062,12 +1093,12 @@ async function guardar() {
     ts: Date.now(),
     tipo, fecha, cantidad,
     producto,
-    precio: tipo === 'venta' ? precio : 0,
-    total:  tipo === 'venta' ? cantidad * precio : 0,
-    metodo: tipo === 'venta' ? metodo : '',
-    plataforma: tipo === 'venta' && metodo === 'link' ? plataforma : '',
+    precio: (tipo === 'venta' || VENTAS_CANAL.includes(tipo)) ? precio : 0,
+    total:  (tipo === 'venta' || VENTAS_CANAL.includes(tipo)) ? cantidad * precio : 0,
+    metodo: (tipo === 'venta' || VENTAS_CANAL.includes(tipo)) ? metodo : '',
+    plataforma: (tipo === 'venta' || VENTAS_CANAL.includes(tipo)) && metodo === 'link' ? plataforma : '',
     detalle, nota,
-    libreria: ([...CANALES_ENVIO, 'devolucion'].includes(tipo)) ? libreria : ''
+    libreria: ([...CANALES_ENVIO, 'devolucion'].includes(tipo) || VENTAS_CANAL.includes(tipo)) ? libreria : ''
   };
 
   const btn = document.getElementById('btn-guardar');
@@ -1138,12 +1169,17 @@ function badgeHTML(tipo, metodo) {
   const labels = {
     venta:'Venta', regalo:'Regalo', devolucion:'Devolución',
     libreria:'Librería', cartagena:'Cartagena', feria:'Feria',
-    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional'
+    prensa:'Prensa', institucional:'Institucional', internacional:'Internacional',
+    venta_libreria:'Venta · Lib.', venta_cartagena:'Venta · Cta.',
+    venta_feria:'Venta · Feria', venta_institucional:'Venta · Inst.',
+    venta_internacional:'Venta · Intl.'
   };
   const cls = {
     venta:'venta', regalo:'regalo', devolucion:'devolucion',
     libreria:'consignacion', cartagena:'consignacion', feria:'consignacion',
-    prensa:'consignacion', institucional:'consignacion', internacional:'consignacion'
+    prensa:'consignacion', institucional:'consignacion', internacional:'consignacion',
+    venta_libreria:'venta', venta_cartagena:'venta', venta_feria:'venta',
+    venta_institucional:'venta', venta_internacional:'venta'
   };
   let h = `<span class="badge badge-${cls[tipo]||'consignacion'}">${labels[tipo]||tipo}</span>`;
   if (tipo === 'venta' && metodo) {
@@ -1187,13 +1223,19 @@ function renderConsignaciones() {
       if (m.fecha > canales[m.tipo][m.libreria].ultima) canales[m.tipo][m.libreria].ultima = m.fecha;
     }
     if (m.tipo === 'devolucion' && m.libreria) {
-      // Find which canal this belongs to by matching libreria name
       CANALES_ENVIO.forEach(c => {
         if (canales[c][m.libreria]) {
           canales[c][m.libreria].devueltos += m.cantidad;
           if (m.fecha > canales[c][m.libreria].ultima) canales[c][m.libreria].ultima = m.fecha;
         }
       });
+    }
+    if (VENTAS_CANAL.includes(m.tipo) && m.libreria) {
+      const canal = m.tipo.replace('venta_','');
+      if (canales[canal] && canales[canal][m.libreria]) {
+        canales[canal][m.libreria].devueltos += m.cantidad;
+        if (m.fecha > canales[canal][m.libreria].ultima) canales[canal][m.libreria].ultima = m.fecha;
+      }
     }
   });
 
