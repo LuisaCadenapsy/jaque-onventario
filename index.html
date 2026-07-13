@@ -524,9 +524,74 @@
     margin-bottom: 1rem;
     line-height: 1.6;
   }
+
+  /* LOCK SCREEN */
+  .lock-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .lock-box {
+    background: var(--cream);
+    border-radius: var(--r);
+    padding: 2.5rem 2rem;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+  }
+  .lock-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .lock-brand span { color: var(--gold); font-style: italic; }
+  .lock-sub {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-bottom: 1.5rem;
+  }
+  .lock-box input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    text-align: center;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    outline: none;
+    background: white;
+  }
+  .lock-box input:focus { border-color: var(--gold); }
+  .lock-box .btn { width: 100%; padding: 12px; font-size: 14px; }
+  .lock-error {
+    color: var(--rose);
+    font-size: 12px;
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
 </style>
 </head>
 <body>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-brand"><span>Jaquea tu duelo</span></div>
+    <div class="lock-sub">Inventario · acceso privado</div>
+    <div class="lock-error" id="lock-error"></div>
+    <input type="password" id="lock-input" placeholder="Clave de acceso" autocomplete="off">
+    <button class="btn btn-primary" onclick="intentarAcceso()">Entrar</button>
+  </div>
+</div>
 
 <header class="header">
   <div class="header-brand"><span>Jaquea tu duelo</span> · Inventario</div>
@@ -814,6 +879,22 @@
     </div>
 
     <div class="config-section">
+      <div class="config-label">Acceso privado</div>
+      <div class="card">
+        <p class="section-note" style="margin-bottom:1rem">Cambia la clave que protege la entrada a esta app. Quien ya entró en su dispositivo no necesita volver a escribirla.</p>
+        <div class="form-grid full">
+          <div class="form-group">
+            <label>Nueva clave de acceso</label>
+            <input type="text" id="cfg-clave" placeholder="Déjalo vacío para no cambiarla">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="guardarClave()">Guardar clave</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
       <div class="config-label">Ajustes del libro</div>
       <div class="card">
         <div class="config-row">
@@ -852,6 +933,7 @@
 <script>
 // ─── CONSTANTS ───────────────────────────────────────────────
 const STOCK_INICIAL = 1000;
+const CLAVE_DEFAULT = 'jaquea2026';
 
 // ─── STATE ───────────────────────────────────────────────────
 let db = null;
@@ -859,8 +941,49 @@ let movimientos = [];
 let precioBase = 45000;
 let connected = false;
 
+// ─── ACCESO / LOCK SCREEN ──────────────────────────────────────
+function getClaveActual() {
+  return localStorage.getItem('jqd_clave') || CLAVE_DEFAULT;
+}
+
+function yaTieneAcceso() {
+  return localStorage.getItem('jqd_acceso_ok') === 'true';
+}
+
+function intentarAcceso() {
+  const input = document.getElementById('lock-input');
+  const errorEl = document.getElementById('lock-error');
+  const val = input.value.trim();
+  if (val === getClaveActual()) {
+    localStorage.setItem('jqd_acceso_ok', 'true');
+    document.getElementById('lock-screen').style.display = 'none';
+  } else {
+    errorEl.textContent = 'Clave incorrecta. Intenta de nuevo.';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function guardarClave() {
+  const val = document.getElementById('cfg-clave').value.trim();
+  if (!val) { alert('Escribe una clave antes de guardar.'); return; }
+  localStorage.setItem('jqd_clave', val);
+  document.getElementById('cfg-clave').value = '';
+  alert('Clave actualizada. La próxima vez que entres desde un dispositivo nuevo deberás usar esta clave.');
+}
+
 // ─── INIT ────────────────────────────────────────────────────
 window.addEventListener('load', () => {
+  // Lock screen
+  if (yaTieneAcceso()) {
+    document.getElementById('lock-screen').style.display = 'none';
+  } else {
+    document.getElementById('lock-input').focus();
+    document.getElementById('lock-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') intentarAcceso();
+    });
+  }
+
   const precio = localStorage.getItem('jqd_precio');
   if (precio) precioBase = parseInt(precio);
 
@@ -1142,8 +1265,6 @@ function resetForm() {
   document.getElementById('f-producto').value = 'libro';
   document.getElementById('f-cantidad').value = 1;
   document.getElementById('f-precio').value = precioBase;
-  document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
-  document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   document.getElementById('f-metodo').value = 'nu';
   onMetodoChange();
   ['f-comprador','f-libreria','f-destinatario','f-nota','f-plataforma'].forEach(id => {
@@ -1285,9 +1406,9 @@ function badgeHTML(tipo, metodo) {
   };
   let h = `<span class="badge badge-${cls[tipo]||'consignacion'}">${labels[tipo]||tipo}</span>`;
   if (tipo === 'venta' && metodo) {
-    const labels = {nu:'Nu/Transf.', qr:'QR', datafono:'Datáfono', link:'Link pago', efectivo:'Efectivo', otro:'Otro'};
-    const cls = {nu:'nu', qr:'nu', datafono:'nu', link:'nu', efectivo:'efectivo', otro:'efectivo'};
-    h += ` <span class="badge badge-${cls[metodo]||'efectivo'}">${labels[metodo]||metodo}</span>`;
+    const labels2 = {nu:'Nu/Transf.', qr:'QR', datafono:'Datáfono', link:'Link pago', efectivo:'Efectivo', otro:'Otro'};
+    const cls2 = {nu:'nu', qr:'nu', datafono:'nu', link:'nu', efectivo:'efectivo', otro:'efectivo'};
+    h += ` <span class="badge badge-${cls2[metodo]||'efectivo'}">${labels2[metodo]||metodo}</span>`;
   }
   return h;
 }
@@ -1314,7 +1435,6 @@ const CANAL_COLORS = {
 };
 
 function renderConsignaciones() {
-  // Group by canal then by destination
   const canales = {};
   CANALES_ENVIO.forEach(c => canales[c] = {});
 
@@ -1335,7 +1455,6 @@ function renderConsignaciones() {
     if (VENTAS_CANAL.includes(m.tipo)) {
       const canal = m.tipo.replace('venta_','');
       if (canales[canal]) {
-        // Match by libreria name if provided, otherwise apply to first entry in canal
         const key = m.libreria && canales[canal][m.libreria] 
           ? m.libreria 
           : Object.keys(canales[canal])[0];
@@ -1368,7 +1487,6 @@ function renderConsignaciones() {
 
     destinos.forEach(k => {
       const d = canales[canal][k];
-      const activos = Math.max(0, d.enviados - d.devueltos);
       const vendidos = d.vendidos || 0;
       const activos2 = Math.max(0, d.enviados - d.devueltos - vendidos);
       html += `<div class="consig-item">
@@ -1396,7 +1514,6 @@ function getNotas() {
 
 function saveNotas(n) {
   localStorage.setItem('jqd_notas', JSON.stringify(n));
-  // Also sync to Firebase if connected
   if (connected && db) {
     db.ref('notas').set(n);
   }
@@ -1418,11 +1535,9 @@ function initNotas() {
 
 function renderNotas() {
   const n = getNotas();
-  // Nota libre
   const nlEl = document.getElementById('nota-libre');
   if (nlEl && !nlEl.dataset.dirty) nlEl.value = n.libre || '';
 
-  // Listas
   renderLista('enviar', n.enviar || [], true);
   renderLista('ubic',   n.ubic   || [], true);
   renderLista('tarea',  n.tarea  || [], false);
@@ -1450,7 +1565,6 @@ function guardarNotaLibre() {
   n.libre = val;
   saveNotas(n);
   document.getElementById('nota-libre').dataset.dirty = '';
-  // Show brief confirmation
   const btn = event.target;
   btn.textContent = '✓ Guardado';
   setTimeout(() => btn.textContent = 'Guardar nota', 1500);
