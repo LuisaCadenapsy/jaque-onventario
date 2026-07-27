@@ -930,6 +930,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 // ─── CONSTANTS ───────────────────────────────────────────────
 const STOCK_INICIAL = 1000;
@@ -997,7 +998,6 @@ window.addEventListener('load', () => {
   setToday();
   onTipoChange();
   document.getElementById('f-precio').value = precioBase;
-  initNotas();
   document.getElementById('f-cantidad').addEventListener('input', updateTotalPreview);
   document.getElementById('f-precio').addEventListener('input', updateTotalPreview);
   renderConfig();
@@ -1014,13 +1014,22 @@ function initFirebase(cfg) {
   try {
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     db = firebase.database();
-    connected = true;
-    db.ref('movimientos').on('value', snap => {
-      const val = snap.val() || {};
-      movimientos = Object.values(val).sort((a,b) => a.ts - b.ts);
-      renderAll();
-    });
-    updateFirebaseStatus(true);
+    firebase.auth().signInAnonymously()
+      .then(() => {
+        connected = true;
+        db.ref('movimientos').on('value', snap => {
+          const val = snap.val() || {};
+          movimientos = Object.values(val).sort((a,b) => a.ts - b.ts);
+          renderAll();
+        });
+        initNotas();
+        updateFirebaseStatus(true);
+      })
+      .catch(e => {
+        connected = false;
+        updateFirebaseStatus(false, 'Error de autenticación: ' + e.message);
+        showModeLocal();
+      });
   } catch(e) {
     connected = false;
     updateFirebaseStatus(false, e.message);
@@ -1039,6 +1048,7 @@ function updateFirebaseStatus(ok, err) {
 function showModeLocal() {
   movimientos = getLocalMovimientos();
   renderAll();
+  initNotas();
 }
 
 function getLocalMovimientos() {
